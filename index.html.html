@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-HK" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>日本秋葉浪漫之旅 🍁 | Travel App</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pastel: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              softBg: '#f8f7ff',
+              accentMaple: '#e65c00',
+              accentPochacco: '#6b7280'
+            }
+          },
+          boxShadow: {
+            'app-bottom': '0 -4px 20px rgba(139, 92, 246, 0.1)',
+            'card-soft': '0 8px 25px rgba(139, 92, 246, 0.08)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Alpine.js for lightweight reactivity -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- html2canvas for receipt export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar & Animations */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 10px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    
+    /* Maple Leaf Floating Animation */
+    .maple-leaf {
+      position: fixed;
+      top: -10%;
+      pointer-events: none;
+      z-index: 50;
+      animation: fall linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+      100% { transform: translateY(105vh) rotate(360deg); opacity: 0.2; }
+    }
+  </style>
+</head>
+
+<body class="bg-pastel-softBg text-gray-800 h-full flex justify-center selection:bg-pastel-200">
+
+  <!-- Maple Leaf Floating Background Overlay -->
+  <div id="maple-container" class="pointer-events-none fixed inset-0 overflow-hidden z-40">
+    <span class="maple-leaf text-pastel-accentMaple opacity-75" style="left: 10%; animation-duration: 8s;">🍁</span>
+    <span class="maple-leaf text-amber-600 opacity-60" style="left: 35%; animation-duration: 12s; animation-delay: 2s;">🍂</span>
+    <span class="maple-leaf text-pastel-accentMaple opacity-80" style="left: 70%; animation-duration: 9s; animation-delay: 4s;">🍁</span>
+    <span class="maple-leaf text-rose-500 opacity-70" style="left: 85%; animation-duration: 11s; animation-delay: 1s;">🍁</span>
+  </div>
+
+  <!-- Main Mobile App Frame -->
+  <div x-data="travelApp()" x-init="initApp()" class="w-full max-w-md bg-white min-h-screen flex flex-col shadow-2xl relative pb-24 border-x border-pastel-100">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-pastel-100 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-full bg-pastel-100 flex items-center justify-center text-pastel-600 font-bold text-sm border border-pastel-200">
+          🐶
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-gray-800 leading-none">紅葉關東風情旅 🍁</h1>
+          <p class="text-[10px] text-pastel-500 font-medium mt-0.5">Pochacco Companion Tour</p>
+        </div>
+      </div>
+      
+      <!-- Save Status Pill -->
+      <div class="flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-medium"
+           :class="saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+        <i class="fa-solid" :class="saveStatus === 'saved' ? 'fa-circle-check' : 'fa-spinner fa-spin'"></i>
+        <span x-text="saveStatus === 'saved' ? '已儲存' : '儲存中...'"></span>
+      </div>
+    </header>
+
+    <!-- Main Dynamic Content Body -->
+    <main class="flex-1 p-4 space-y-4">
+
+      <!-- ================= 1. 行程 TAB ================= -->
+      <section x-show="currentTab === 'itinerary'" x-transition class="space-y-4">
+        
+        <!-- Day Selector Buttons -->
+        <div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none">
+          <template x-for="(day, idx) in itinerary" :key="idx">
+            <button @click="selectedDayIdx = idx"
+                    class="px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex flex-col items-center min-w-[65px]"
+                    :class="selectedDayIdx === idx ? 'bg-pastel-500 text-white shadow-md shadow-pastel-200 scale-105' : 'bg-pastel-50 text-pastel-600 hover:bg-pastel-100'">
+              <span x-text="'Day ' + (idx + 1)"></span>
+              <span class="text-[10px] opacity-80" x-text="day.date"></span>
+            </button>
+          </template>
+        </div>
+
+        <!-- Selected Day Info Summary Header -->
+        <div class="bg-gradient-to-r from-pastel-100 to-violet-50 p-4 rounded-2xl border border-pastel-200/60 relative overflow-hidden">
+          <div class="relative z-10">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs text-pastel-600 font-semibold uppercase tracking-wider" x-text="itinerary[selectedDayIdx].date"></span>
+                <h2 class="text-lg font-bold text-gray-800" x-text="itinerary[selectedDayIdx].title"></h2>
+              </div>
+              <button @click="openAddSpotModal()" class="bg-white text-pastel-600 hover:bg-pastel-50 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-pastel-200">
+                <i class="fa-solid fa-plus mr-1"></i>新增行程
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1" x-text="itinerary[selectedDayIdx].description"></p>
+          </div>
+          <span class="absolute -right-2 -bottom-2 text-5xl opacity-15">🐶</span>
+        </div>
+
+        <!-- Timeline Items list -->
+        <div class="relative border-l-2 border-pastel-200 ml-3 space-y-4 my-2">
+          <template x-for="(spot, sIdx) in itinerary[selectedDayIdx].spots" :key="sIdx">
+            <div class="relative pl-6 group">
+              <!-- Timeline Bullet -->
+              <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-pastel-400 border-2 border-white shadow-sm flex items-center justify-center">
+                <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+              </div>
+
+              <!-- Spot Card -->
+              <div class="bg-white rounded-2xl p-3.5 border border-pastel-100 shadow-card-soft hover:border-pastel-300 transition-all">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <span class="text-[11px] font-bold text-pastel-600 bg-pastel-50 px-2 py-0.5 rounded-md" x-text="spot.time"></span>
+                    <h3 class="font-bold text-gray-800 text-sm mt-1" x-text="spot.name"></h3>
+                  </div>
+                  <div class="flex items-center space-x-1 text-gray-400">
+                    <button @click="editSpot(sIdx)" class="p-1 hover:text-pastel-600 text-xs"><i class="fa-solid fa-pen"></i></button>
+                    <button @click="deleteSpot(sIdx)" class="p-1 hover:text-rose-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </div>
+
+                <!-- Stay Duration & Transit Info -->
+                <div class="mt-2 text-xs text-gray-500 space-y-1">
+                  <div class="flex items-center text-amber-700 bg-amber-50/70 px-2 py-1 rounded-lg">
+                    <i class="fa-solid fa-clock mr-1.5 text-amber-500"></i>
+                    <span>預計停留時間：<strong x-text="spot.duration"></strong></span>
+                  </div>
+                  
+                  <template x-if="spot.transit">
+                    <div class="flex items-start text-pastel-700 bg-pastel-50/80 px-2 py-1 rounded-lg">
+                      <i class="fa-solid fa-route mr-1.5 mt-0.5 text-pastel-500"></i>
+                      <span x-text="spot.transit"></span>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Export Exit / Accessibility Notes -->
+                <template x-if="spot.accessibility">
+                  <div class="mt-2 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg flex items-center">
+                    <i class="fa-solid fa-wheelchair mr-1.5 text-emerald-500"></i>
+                    <span x-text="spot.accessibility"></span>
+                  </div>
+                </template>
+
+                <!-- Remarks / Order Reference -->
+                <template x-if="spot.remarks">
+                  <div class="mt-2 text-[11px] text-gray-600 border-t border-gray-100 pt-1.5">
+                    <i class="fa-solid fa-circle-info text-pastel-400 mr-1"></i>
+                    <span x-text="spot.remarks"></span>
+                  </div>
+                </template>
+
+                <!-- Navigation Direct Link -->
+                <div class="mt-3 flex justify-end">
+                  <a :href="spot.mapUrl || 'https://maps.google.com/?q=' + encodeURIComponent(spot.name)" target="_blank"
+                     class="inline-flex items-center text-xs font-bold bg-pastel-500 hover:bg-pastel-600 text-white px-3 py-1.5 rounded-xl shadow-sm transition">
+                    <i class="fa-solid fa-location-arrow mr-1.5"></i>一鍵地圖導航
+                  </a>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Backup Rain/Hidden Spots Section -->
+        <div class="bg-gradient-to-br from-indigo-50/60 to-purple-50/60 rounded-2xl p-3.5 border border-indigo-100">
+          <h3 class="text-xs font-bold text-indigo-800 flex items-center">
+            <i class="fa-solid fa-cloud-showers-heavy mr-1.5 text-indigo-500"></i>雨天備案 / 附近順遊景點
+          </h3>
+          <div class="mt-2 space-y-2">
+            <template x-for="(backup, bIdx) in itinerary[selectedDayIdx].backups" :key="bIdx">
+              <div class="bg-white/80 backdrop-blur-sm p-2.5 rounded-xl text-xs border border-indigo-100/50 flex justify-between items-center">
+                <div>
+                  <div class="font-bold text-gray-800" x-text="backup.name"></div>
+                  <div class="text-[11px] text-gray-500" x-text="backup.reason"></div>
+                </div>
+                <a :href="'https://maps.google.com/?q=' + encodeURIComponent(backup.name)" target="_blank" class="text-indigo-600 text-xs font-bold px-2 py-1 bg-indigo-50 rounded-lg">地圖</a>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. 記帳 TAB ================= -->
+      <section x-show="currentTab === 'expenses'" x-transition class="space-y-4">
+        
+        <!-- Rate Calculator Header Card -->
+        <div class="bg-gradient-to-r from-pastel-500 to-purple-600 text-white rounded-2xl p-4 shadow-lg">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-semibold text-pastel-100"><i class="fa-solid fa-calculator mr-1"></i>雙向匯率計算器</span>
+            <span class="text-[11px] text-pastel-200">1 JPY = <span x-text="exchangeRate"></span> HKD</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white/10 backdrop-blur-md p-2 rounded-xl">
+              <label class="text-[10px] text-pastel-200 block">日圓 (JPY)</label>
+              <input type="number" x-model="calcJpy" @input="calcHkd = (calcJpy * exchangeRate).toFixed(1)"
+                     class="w-full bg-transparent font-bold text-base outline-none text-white placeholder-white/50" placeholder="0">
+            </div>
+            <div class="bg-white/10 backdrop-blur-md p-2 rounded-xl">
+              <label class="text-[10px] text-pastel-200 block">港幣 (HKD)</label>
+              <input type="number" x-model="calcHkd" @input="calcJpy = (calcHkd / exchangeRate).toFixed(0)"
+                     class="w-full bg-transparent font-bold text-base outline-none text-white placeholder-white/50" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- New Expense Action Button -->
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold text-gray-800">隨身記帳與分帳</h2>
+          <button @click="openExpenseModal()" class="bg-pastel-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md hover:bg-pastel-600">
+            <i class="fa-solid fa-plus mr-1"></i>新增支出
+          </button>
+        </div>
+
+        <!-- Expenses List -->
+        <div class="space-y-2.5">
+          <template x-for="(exp, eIdx) in expenses" :key="eIdx">
+            <div class="bg-white p-3.5 rounded-2xl border border-pastel-100 shadow-card-soft transition relative"
+                 :class="exp.settled ? 'opacity-50 bg-gray-50' : ''">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-sm text-gray-800" :class="exp.settled ? 'line-through' : ''" x-text="exp.title"></span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-pastel-50 text-pastel-600 font-semibold" x-text="exp.currency"></span>
+                  </div>
+                  <div class="text-[11px] text-gray-400 mt-0.5" x-text="exp.date + ' • 由 ' + exp.payer + ' 先付'"></div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold text-sm text-pastel-600" x-text="exp.currency + ' ' + exp.amount"></div>
+                  <div class="text-[10px] text-gray-400" x-text="'約 HKD ' + (exp.currency === 'JPY' ? (exp.amount * exchangeRate).toFixed(1) : exp.amount)"></div>
+                </div>
+              </div>
+
+              <!-- Payer Breakdowns -->
+              <div class="mt-2 pt-2 border-t border-gray-50 text-[11px] text-gray-600 flex justify-between items-center">
+                <div>
+                  <span class="text-gray-400">分攤人: </span>
+                  <span x-text="exp.type === 'equal' ? '人均 (' + exp.participants.join(', ') + ')' : '自訂金額'"></span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button @click="toggleSettleExpense(eIdx)" class="text-xs px-2 py-0.5 rounded-lg border"
+                          :class="exp.settled ? 'bg-gray-200 text-gray-600 border-gray-300' : 'bg-emerald-50 text-emerald-600 border-emerald-200'">
+                    <i class="fa-solid" :class="exp.settled ? 'fa-undo' : 'fa-check'"></i>
+                    <span x-text="exp.settled ? '重開' : '結清'"></span>
+                  </button>
+                  <button @click="deleteExpense(eIdx)" class="text-gray-300 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Smart Settlement Summary Section -->
+        <div class="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-4 border border-violet-100 space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="text-xs font-bold text-pastel-700 flex items-center">
+              <i class="fa-solid fa-scale-balanced mr-1.5"></i>未結清帳目統一算帳結果
+            </h3>
+            <button @click="exportReceipt()" class="text-[11px] bg-white text-pastel-600 border border-pastel-200 font-bold px-2.5 py-1 rounded-xl shadow-sm">
+              <i class="fa-solid fa-file-export mr-1"></i>匯出圖文帳單
+            </button>
+          </div>
+
+          <!-- Calculated Settlements -->
+          <div class="space-y-1.5" id="receipt-area">
+            <template x-for="(settle, sIdx) in calculatedBalances" :key="sIdx">
+              <div class="bg-white/80 p-2.5 rounded-xl text-xs flex justify-between items-center border border-pastel-100">
+                <span class="font-medium text-gray-700">
+                  <strong class="text-rose-500" x-text="settle.from"></strong> 應該付給 <strong class="text-emerald-600" x-text="settle.to"></strong>
+                </span>
+                <span class="font-bold text-pastel-600" x-text="'JPY ' + settle.jpy + ' (約 HKD ' + settle.hkd + ')'"></span>
+              </div>
+            </template>
+            <template x-if="calculatedBalances.length === 0">
+              <div class="text-center text-xs text-gray-400 py-2">目前沒有未結清的互欠帳目 🐶🎉</div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. 美食 TAB ================= -->
+      <section x-show="currentTab === 'food'" x-transition class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold text-gray-800">周邊必吃美食與米芝蓮推介</h2>
+          <span class="text-[11px] text-pastel-500 bg-pastel-50 px-2 py-0.5 rounded-full">預算約 HKD 500/人</span>
+        </div>
+
+        <div class="space-y-3">
+          <template x-for="(food, fIdx) in foodRecommendations" :key="fIdx">
+            <div class="bg-white rounded-2xl p-3.5 border border-pastel-100 shadow-card-soft space-y-2">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="text-[10px] bg-rose-50 text-rose-500 font-bold px-2 py-0.5 rounded-md" x-text="food.tag"></span>
+                  <h3 class="font-bold text-sm text-gray-800 mt-1" x-text="food.name"></h3>
+                </div>
+                <span class="text-xs font-bold text-pastel-600" x-text="food.priceRange"></span>
+              </div>
+
+              <p class="text-xs text-gray-600" x-text="food.reason"></p>
+
+              <div class="text-[11px] text-gray-400 space-y-0.5">
+                <div><i class="fa-solid fa-location-dot mr-1 text-pastel-400"></i><span x-text="food.address"></span></div>
+              </div>
+
+              <!-- Action links -->
+              <div class="flex space-x-2 pt-2 border-t border-gray-50">
+                <a :href="food.mapUrl" target="_blank" class="flex-1 text-center py-1.5 bg-pastel-50 text-pastel-600 font-bold text-xs rounded-xl">
+                  <i class="fa-solid fa-map-location-dot mr-1"></i>導航
+                </a>
+                <template x-if="food.reserveUrl">
+                  <a :href="food.reserveUrl" target="_blank" class="flex-1 text-center py-1.5 bg-rose-50 text-rose-600 font-bold text-xs rounded-xl">
+                    <i class="fa-solid fa-calendar-check mr-1"></i>預約網站
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Translation & Local Assistant Helper Widget -->
+        <div class="bg-gradient-to-br from-purple-50 to-pastel-50 p-3.5 rounded-2xl border border-pastel-200/60">
+          <h3 class="text-xs font-bold text-pastel-700 mb-2 flex items-center">
+            <i class="fa-solid fa-language mr-1.5"></i>即時點餐與習俗小幫手
+          </h3>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-white p-2 rounded-xl border border-pastel-100">
+              <div class="font-bold text-gray-700">すみません</div>
+              <div class="text-[10px] text-gray-400">不好意思 / 召喚店員</div>
+            </div>
+            <div class="bg-white p-2 rounded-xl border border-pastel-100">
+              <div class="font-bold text-gray-700">お会計お願いします</div>
+              <div class="text-[10px] text-gray-400">請幫我結帳</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. 清單 TAB ================= -->
+      <section x-show="currentTab === 'checklist'" x-transition class="space-y-4">
+        
+        <!-- Toggle Subtabs -->
+        <div class="flex bg-pastel-50 p-1 rounded-2xl border border-pastel-100">
+          <button @click="checklistSubTab = 'preTrip'" class="flex-1 py-1.5 text-xs font-bold rounded-xl transition"
+                  :class="checklistSubTab === 'preTrip' ? 'bg-white text-pastel-600 shadow-sm' : 'text-gray-400'">出發前備忘清單</button>
+          <button @click="checklistSubTab = 'shopping'" class="flex-1 py-1.5 text-xs font-bold rounded-xl transition"
+                  :class="checklistSubTab === 'shopping' ? 'bg-white text-pastel-600 shadow-sm' : 'text-gray-400'">必買清單 (按區域分組)</button>
+        </div>
+
+        <!-- Subtab 1: Pre-trip Checklist -->
+        <div x-show="checklistSubTab === 'preTrip'" class="space-y-2">
+          <template x-for="(item, cIdx) in preTripList" :key="cIdx">
+            <label class="flex items-center justify-between bg-white p-3 rounded-2xl border border-pastel-100 shadow-card-soft cursor-pointer">
+              <div class="flex items-center space-x-3">
+                <input type="checkbox" x-model="item.checked" class="w-4 h-4 rounded text-pastel-500 focus:ring-pastel-400">
+                <span class="text-xs font-medium" :class="item.checked ? 'line-through text-gray-400' : 'text-gray-800'" x-text="item.name"></span>
+              </div>
+              <span class="text-[10px] text-pastel-500 bg-pastel-50 px-2 py-0.5 rounded-full" x-text="item.category"></span>
+            </label>
+          </template>
+        </div>
+
+        <!-- Subtab 2: Shopping List grouped by Store/Area -->
+        <div x-show="checklistSubTab === 'shopping'" class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-500">勾選後將自動畫線隱藏</span>
+            <button @click="openAddShoppingModal()" class="text-xs bg-pastel-500 text-white font-bold px-2.5 py-1 rounded-xl">
+              <i class="fa-solid fa-plus mr-1"></i>新增購物項目
+            </button>
+          </div>
+
+          <template x-for="(group, areaName) in groupedShoppingList" :key="areaName">
+            <div class="bg-white rounded-2xl p-3.5 border border-pastel-100 shadow-card-soft space-y-2">
+              <h3 class="text-xs font-bold text-pastel-700 flex items-center border-b border-pastel-50 pb-1.5">
+                <i class="fa-solid fa-store mr-1.5 text-pastel-400"></i><span x-text="areaName"></span>
+              </h3>
+              
+              <div class="space-y-2">
+                <template x-for="(item, sIdx) in group" :key="sIdx">
+                  <div class="flex items-center justify-between p-2 rounded-xl transition"
+                       :class="item.checked ? 'bg-gray-50 opacity-40' : 'bg-pastel-50/40'">
+                    <div class="flex items-center space-x-2.5">
+                      <input type="checkbox" x-model="item.checked" class="w-4 h-4 rounded text-pastel-500">
+                      <div>
+                        <div class="text-xs font-bold text-gray-800" :class="item.checked ? 'line-through' : ''" x-text="item.name"></div>
+                        <div class="text-[10px] text-gray-400" x-text="item.tag + ' • 數量: ' + item.qty + ' • ' + (item.note || '無備註')"></div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-xs font-bold text-pastel-600" x-text="'¥' + item.price"></div>
+                      <div class="text-[10px] text-gray-400" x-text="'約 HKD ' + (item.price * exchangeRate).toFixed(0)"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Shopping Budget Floating Live Calculator Footer -->
+          <div class="bg-gradient-to-r from-violet-600 to-pastel-500 text-white p-3.5 rounded-2xl shadow-lg flex justify-between items-center text-xs">
+            <div>
+              <div class="text-[10px] text-pastel-200">待買預算總計</div>
+              <div class="font-bold text-sm" x-text="'¥' + shoppingUnboughtTotal + ' (約 HKD ' + (shoppingUnboughtTotal * exchangeRate).toFixed(0) + ')'"></div>
+            </div>
+            <div class="text-right border-l border-white/20 pl-3">
+              <div class="text-[10px] text-pastel-200">已購買總花費</div>
+              <div class="font-bold text-sm" x-text="'¥' + shoppingBoughtTotal"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Mobile-App Navigation Bar -->
+    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-pastel-100 shadow-app-bottom px-6 py-2 flex justify-between items-center z-30">
+      <button @click="currentTab = 'itinerary'" class="flex flex-col items-center space-y-1" :class="currentTab === 'itinerary' ? 'text-pastel-600' : 'text-gray-400'">
+        <i class="fa-solid fa-map-location-dot text-base"></i>
+        <span class="text-[10px] font-medium">行程總表</span>
+      </button>
+      <button @click="currentTab = 'expenses'" class="flex flex-col items-center space-y-1" :class="currentTab === 'expenses' ? 'text-pastel-600' : 'text-gray-400'">
+        <i class="fa-solid fa-wallet text-base"></i>
+        <span class="text-[10px] font-medium">記帳分帳</span>
+      </button>
+      <button @click="currentTab = 'food'" class="flex flex-col items-center space-y-1" :class="currentTab === 'food' ? 'text-pastel-600' : 'text-gray-400'">
+        <i class="fa-solid fa-utensils text-base"></i>
+        <span class="text-[10px] font-medium">美食推介</span>
+      </button>
+      <button @click="currentTab = 'checklist'" class="flex flex-col items-center space-y-1" :class="currentTab === 'checklist' ? 'text-pastel-600' : 'text-gray-400'">
+        <i class="fa-solid fa-list-check text-base"></i>
+        <span class="text-[10px] font-medium">清單必買</span>
+      </button>
+    </nav>
+
+    <!-- ================= MODALS / POPUPS ================= -->
+    <!-- 1. Add/Edit Itinerary Spot Modal -->
+    <div x-show="showSpotModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" x-transition>
+      <div class="bg-white rounded-3xl p-5 w-full max-w-sm space-y-3 shadow-2xl">
+        <h3 class="font-bold text-sm text-gray-800" x-text="isEditSpot ? '修改景點地點' : '新增景點'"></h3>
+        <input type="text" x-model="modalSpot.time" placeholder="時間 (例: 10:00 - 11:30)" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <input type="text" x-model="modalSpot.name" placeholder="景點/餐廳名稱" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <input type="text" x-model="modalSpot.duration" placeholder="停留時間 (例: 1.5小時)" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <input type="text" x-model="modalSpot.transit" placeholder="交通方式 (例: 地鐵地下鐵 B2 出口步行 5 分鐘)" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <input type="text" x-model="modalSpot.accessibility" placeholder="無障礙 / 電梯提醒" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <input type="text" x-model="modalSpot.remarks" placeholder="備註 (例: 預約序號 #98231)" class="w-full text-xs p-2.5 rounded-xl border border-pastel-200 outline-none focus:border-pastel-500">
+        <div class="flex space-x-2 pt-2">
+          <button @click="showSpotModal = false" class="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-500">取消</button>
+          <button @click="saveSpotModal()" class="flex-1 py-2 rounded-xl bg-pastel-500 text-white text-xs font-bold">儲存</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Alpine JS Application Logic -->
+  <script>
+    function travelApp() {
+      return {
+        version: '1.0',
+        saveStatus: 'saved',
+        currentTab: 'itinerary',
+        checklistSubTab: 'preTrip',
+        selectedDayIdx: 0,
+        exchangeRate: 0.052, // JPY to HKD
+        calcJpy: 10000,
+        calcHkd: 520,
+
+        // Modals state
+        showSpotModal: false,
+        isEditSpot: false,
+        editingSpotIdx: null,
+        modalSpot: { time: '', name: '', duration: '', transit: '', accessibility: '', remarks: '' },
+
+        // 1. 行程總表資料 (含時間、交通出口、Google Map導航)
+        itinerary: [
+          {
+            date: '11/21 (Day 1)',
+            title: '東京抵達 & 汐留秋夜點燈',
+            description: '抵達羽田機場，辦理入住後前往汐留觀賞夜景',
+            spots: [
+              { time: '14:00 - 15:00', name: '羽田機場 Terminal 3', duration: '1小時', transit: '乘坐京急機場線至新橋站，約25分鐘', accessibility: '閘口設有無障礙電梯直達月台', remarks: '領取 JR Pass 及 Suica 交通卡', mapUrl: 'https://maps.google.com/?q=Haneda+Airport' },
+              { time: '16:30 - 18:00', name: '汐留 Caretta 秋日點燈', duration: '1.5小時', transit: '新橋站 JR 烏森口離開，步行 6 分鐘', accessibility: 'Caretta B2 車站連通道全段無障礙坡道', remarks: '免費入場觀賞', mapUrl: 'https://maps.google.com/?q=Caretta+Shiodome' }
+            ],
+            backups: [
+              { name: '銀座 Donki 驚安殿堂', reason: '室內商場，雨天備案購物首選' }
+            ]
+          },
+          {
+            date: '11/22 (Day 2)',
+            title: '高尾山楓葉纜車之旅',
+            description: '賞楓名勝，搭乘紅葉纜車俯瞰全山景緻',
+            spots: [
+              { time: '09:30 - 12:30', name: '高尾山 Maple Cable Car', duration: '3小時', transit: '京王線高尾山口站 Exit 1，步行 5 分鐘', accessibility: '山腳纜車站設有無障礙通道與博愛車廂', remarks: '需預先購買纜車來回票', mapUrl: 'https://maps.google.com/?q=Mt+Takao' }
+            ],
+            backups: [
+              { name: '新宿御苑室內溫室', reason: '雨天亦可觀賞熱帶植物區' }
+            ]
+          }
+        ],
+
+        // 2. 隨身記帳資料
+        expenses: [
+          { title: '高尾山纜車來回票', amount: 3800, currency: 'JPY', payer: 'A', type: 'equal', participants: ['A', 'B'], date: '11/22', settled: false },
+          { title: '銀座鰻魚飯晚餐', amount: 8500, currency: 'JPY', payer: 'B', type: 'equal', participants: ['A', 'B'], date: '11/22', settled: false }
+        ],
+
+        // 3. 美食推介
+        foodRecommendations: [
+          { name: '銀座 鰻魚 駒形前川', tag: '網紅 / 老字號', priceRange: '¥5,000 - ¥8,000', reason: '百年炭火蒲燒鰻魚，特製醬汁香濃', address: '東京都中央區銀座 5-1-1', mapUrl: 'https://maps.google.com/?q=Ginza', reserveUrl: 'https://tablecheck.com' },
+          { name: '六本木 龍吟 (Ryugin)', tag: '米芝蓮三星', priceRange: '¥35,000 /人', reason: '極致日式懷石料理，傳統與現代融合', address: '東京都港區六本木 7-17-24', mapUrl: 'https://maps.google.com/?q=Ryugin+Roppongi', reserveUrl: 'https://tablecheck.com' }
+        ],
+
+        // 4. 清單資料
+        preTripList: [
+          { name: '護照與日本 Visa/VJW QR Code', category: '證件', checked: true },
+          { name: '日本 eSIM / 網卡卡針', category: '通訊', checked: true },
+          { name: '三腳轉接頭與行動電源', category: '電器', checked: false }
+        ],
+
+        shoppingList: [
+          { name: '一蘭拉麵博多限定調理包', storeArea: '唐吉訶德 / 新宿店', tag: '伴手禮', price: 2000, qty: 2, note: '幫同事代購', checked: false },
+          { name: '資生堂安耐曬防曬乳', storeArea: '松本清藥妝店', tag: '藥妝', price: 2800, qty: 1, note: '自用', checked: true }
+        ],
+
+        // 自動計算未結清帳目 balance
+        get calculatedBalances() {
+          let net = {}; // A -> B balance
+          this.expenses.filter(e => !e.settled).forEach(e => {
+            let share = e.amount / e.participants.length;
+            e.participants.forEach(p => {
+              if (p !== e.payer) {
+                let key = `${p}->${e.payer}`;
+                net[key] = (net[key] || 0) + share;
+              }
+            });
+          });
+
+          let result = [];
+          for (let key in net) {
+            let [from, to] = key.split('->');
+            let jpy = Math.round(net[key]);
+            let hkd = (jpy * this.exchangeRate).toFixed(1);
+            result.push({ from, to, jpy, hkd });
+          }
+          return result;
+        },
+
+        // 購物清單按區域分組
+        get groupedShoppingList() {
+          return this.shoppingList.reduce((acc, item) => {
+            (acc[item.storeArea] = acc[item.storeArea] || []).push(item);
+            return acc;
+          }, {});
+        },
+
+        get shoppingUnboughtTotal() {
+          return this.shoppingList.filter(i => !i.checked).reduce((sum, i) => sum + (i.price * i.qty), 0);
+        },
+
+        get shoppingBoughtTotal() {
+          return this.shoppingList.filter(i => i.checked).reduce((sum, i) => sum + (i.price * i.qty), 0);
+        },
+
+        // 初始化與 localStorage 還原
+        initApp() {
+          const savedData = localStorage.getItem('japan_travel_app_data');
+          if (savedData) {
+            try {
+              const parsed = JSON.parse(savedData);
+              if (parsed.itinerary) this.itinerary = parsed.itinerary;
+              if (parsed.expenses) this.expenses = parsed.expenses;
+              if (parsed.shoppingList) this.shoppingList = parsed.shoppingList;
+              if (parsed.preTripList) this.preTripList = parsed.preTripList;
+            } catch (e) {
+              console.error('Failed to load local storage', e);
+            }
+          }
+
+          // 監聽狀態變更自動 Save
+          this.$watch('itinerary', () => this.saveToLocalStorage(), { deep: true });
+          this.$watch('expenses', () => this.saveToLocalStorage(), { deep: true });
+          this.$watch('shoppingList', () => this.saveToLocalStorage(), { deep: true });
+          this.$watch('preTripList', () => this.saveToLocalStorage(), { deep: true });
+        },
+
+        saveToLocalStorage() {
+          this.saveStatus = 'saving';
+          const payload = {
+            version: this.version,
+            itinerary: this.itinerary,
+            expenses: this.expenses,
+            shoppingList: this.shoppingList,
+            preTripList: this.preTripList
+          };
+          localStorage.setItem('japan_travel_app_data', JSON.stringify(payload));
+          setTimeout(() => { this.saveStatus = 'saved'; }, 400);
+        },
+
+        // 景點操作
+        openAddSpotModal() {
+          this.isEditSpot = false;
+          this.modalSpot = { time: '', name: '', duration: '', transit: '', accessibility: '', remarks: '' };
+          this.showSpotModal = true;
+        },
+        editSpot(sIdx) {
+          this.isEditSpot = true;
+          this.editingSpotIdx = sIdx;
+          this.modalSpot = { ...this.itinerary[this.selectedDayIdx].spots[sIdx] };
+          this.showSpotModal = true;
+        },
+        saveSpotModal() {
+          if (this.isEditSpot) {
+            this.itinerary[this.selectedDayIdx].spots[this.editingSpotIdx] = { ...this.modalSpot };
+          } else {
+            this.itinerary[this.selectedDayIdx].spots.push({ ...this.modalSpot });
+          }
+          this.showSpotModal = false;
+        },
+        deleteSpot(sIdx) {
+          if (confirm('確定要刪除這個景點嗎？')) {
+            this.itinerary[this.selectedDayIdx].spots.splice(sIdx, 1);
+          }
+        },
+
+        // 記帳操作
+        openExpenseModal() {
+          const title = prompt('請輸入費用名稱 (例如: 午餐拉麵):');
+          if (!title) return;
+          const amount = parseFloat(prompt('請輸入總金額 (日圓):', '3000'));
+          if (!amount) return;
+          
+          this.expenses.push({
+            title: title,
+            amount: amount,
+            currency: 'JPY',
+            payer: 'A',
+            type: 'equal',
+            participants: ['A', 'B'],
+            date: '11/' + (21 + this.selectedDayIdx),
+            settled: false
+          });
+        },
+        toggleSettleExpense(idx) {
+          this.expenses[idx].settled = !this.expenses[idx].settled;
+        },
+        deleteExpense(idx) {
+          this.expenses.splice(idx, 1);
+        },
+
+        // 匯出帳單圖檔
+        exportReceipt() {
+          const area = document.getElementById('receipt-area');
+          html2canvas(area).then(canvas => {
+            const link = document.createElement('a');
+            link.download = '旅行結算帳單-Pochacco.png';
+            link.href = canvas.toDataURL();
+            link.click();
+          });
+        },
+
+        openAddShoppingModal() {
+          const name = prompt('商品名稱:');
+          if (!name) return;
+          const store = prompt('店家/區域 (例: 驚安殿堂):', '藥妝店');
+          const price = parseFloat(prompt('日圓價格:', '1000')) || 0;
+          this.shoppingList.push({
+            name, storeArea: store, tag: '必買', price, qty: 1, note: '', checked: false
+          });
+        }
+      }
+    }
+  </script>
+</body>
+</html>
